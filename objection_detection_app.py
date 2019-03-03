@@ -40,11 +40,15 @@ def thread_worker(input_q, output_q):
 
 		sess = tf.Session(graph=detection_graph)
 
+	object_tracker = ObjectTracker()
 	while run_threads:
 		if not input_q.empty():
 			frame = input_q.get()
-			frame_rgb = cv.cvtColor(frame, cv.COLOR_BGR2RGB)
-			output_q.put(detect_objects(frame, sess, detection_graph))
+			data = detect_objects(frame, sess, detection_graph)
+			context = {'frame': frame, 'class_names': data['class_names'], 'rec_points': data['rect_points'], 
+			'class_colors': data['class_colors'], 'width': width, 'height': height}
+			new_frame = object_tracker(context)
+			output_q.put(new_frame)
 
 	sess.close()
 
@@ -77,14 +81,13 @@ run_threads = True #will be used to kill threads
 if __name__ == '__main__':
 
 	parser = argparse.ArgumentParser()
-	parser = argparse.ArgumentParser(description='Object Detection using OPENCV')
+	parser = argparse.ArgumentParser(description='Real Time Object Detection using OPENCV + TF')
 	parser.add_argument('-src', '--source', dest='video_source', help='Path of video source, no input webcam.')
 	parser.add_argument('-img', '--image', help='Path to image file.')
 	parser.add_argument('-vid', '--video', help='Path to video file.')
 	args = parser.parse_args()
 
 	input_q = Queue(5)
-	process_q = Queue()
 	output_q = Queue()
 
 	Thread(target=thread_worker, args=(input_q, output_q)).start()
@@ -95,29 +98,25 @@ if __name__ == '__main__':
 	codec = cv.VideoWriter_fourcc(*'MJPG')#http://www.fourcc.org/codecs.php
 	vid_writer = cv.VideoWriter(OUTPUT_FILE, codec , 30, (width,height))
 
-	object_tracker = ObjectTracker()
 
 	while cv.waitKey(1) & 0xFF != ord('q') : #If q key is pressed exit window
 
 		has_frame, frame = vid_capture.read()
 
-		# if not has_frame:
-		# 	print("Done processing !!!")
-		# 	print("Output file is stored as ", outputFile)
-		# 	cv.waitKey(3000)
-		# 	# Release device
-		# 	cap.release()
-		# 	break
+		if not has_frame:
+			print("Done processing !!!")
+			print("Output file is stored as ", outputFile)
+			cv.waitKey(3000)
+			# Release device
+			vid_capture.release()
+			break
 
 		# put data into the input queue 
 		input_q.put(frame)
 
 		if not output_q.empty():
-			data = output_q.get()
+			new_frame = output_q.get()
 			print("frame going to be outputted")
-			context = {'frame': frame, 'class_names': data['class_names'], 'rec_points': data['rect_points'], 
-						'class_colors': data['class_colors'], 'width': width, 'height': height}
-			new_frame = object_tracker(context)
 			vid_writer.write(new_frame.astype(np.uint8))
 			cv.imshow(WINDOW_NAME, new_frame)
 
