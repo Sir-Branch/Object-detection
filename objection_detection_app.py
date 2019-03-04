@@ -12,20 +12,11 @@ from analytics.tracking import ObjectTracker
 from detect_object import detect_objects
 
 #https://github.com/tensorflow/models/blob/master/research/object_detection/g3doc/detection_model_zoo.md
+
+#Only for python 2
 #https://www.pyimagesearch.com/2015/12/21/increasing-webcam-fps-with-python-and-opencv/
 #https://www.pyimagesearch.com/2017/02/06/faster-video-file-fps-with-cv2-videocapture-and-opencv/
 
-#Could speed up with queues for output
-# def thread_vid_output(input_q, output_q):
-# 	while True:
-# 		if not output_q.empty():
-# 			data = output_q.get()
-# 			context = {'frame': frame, 'class_names': data['class_names'], 'rec_points': data['rect_points'], 
-# 						'class_colors': data['class_colors'], 'width': width, 'height': height}
-
-# 			new_frame = object_tracker(context)
-# 			vid_writer.write(new_frame.astype(np.uint8))
-# 			cv.imshow(WINDOW_NAME, new_frame)
 
 
 def thread_worker(input_q, output_q):
@@ -40,90 +31,118 @@ def thread_worker(input_q, output_q):
 
 		sess = tf.Session(graph=detection_graph)
 
-	object_tracker = ObjectTracker()
 	while run_threads:
-		if not input_q.empty():
+		if not input_q.empty(): #better to block than poll empty, as not running on various cores
 			frame = input_q.get()
 			data = detect_objects(frame, sess, detection_graph)
-			context = {'frame': frame, 'class_names': data['class_names'], 'rec_points': data['rect_points'], 
-			'class_colors': data['class_colors'], 'width': width, 'height': height}
-			new_frame = object_tracker(context)
-			output_q.put(new_frame)
+			output_q.put(data)
+			output_q.put(frame)
 
 	sess.close()
 
+"""
+Tried to optimize with threads but ended up working slower, is it able to run with various cores?
+ https://stackoverflow.com/questions/7542957/is-python-capable-of-running-on-multiple-cores
+ Base on various answer it's unable to run on various cores 
+"""
 
 def thread_process_image(input_q, process_q):
-
 	return
-
-
-
-
 def thread_output_image(process_q, output_q):
-
-
 	return
 
+def parse_cmd_line():
 
-CWD_PATH = os.getcwd()
-
-MODEL_NAME = 'ssdlite_mobilenet_v2_coco_2018_05_09'
-PATH_TO_MODEL = os.path.join(CWD_PATH, 'detection', MODEL_NAME, 'frozen_inference_graph.pb')
-PATH_TO_VIDEO = os.path.join(CWD_PATH, 'input.mp4')
-OUTPUT_FILE = "my_test.avi"
-WINDOW_NAME = "People Detector"
-#MAX_QUEUE_SIZE = 128
-
-
-run_threads = True #will be used to kill threads
-
-if __name__ == '__main__':
+	video_capture_source = 0 #Webcam number
+	output_file = "NULL.avi"
 
 	parser = argparse.ArgumentParser()
 	parser = argparse.ArgumentParser(description='Real Time Object Detection using OPENCV + TF')
-	parser.add_argument('-src', '--source', dest='video_source', help='Path of video source, no input webcam.')
+	#parser.add_argument('-src', '--source', dest='video_source', help='Path of video source, no input webcam.')
 	parser.add_argument('-img', '--image', help='Path to image file.')
 	parser.add_argument('-vid', '--video', help='Path to video file.')
 	args = parser.parse_args()
 
-	input_q = Queue(5)
+
+	if(args.video):
+		# Open the video file
+		if not os.path.isfile(args.video):
+			print("Input video file ", args.video, " doesn't exist")
+			sys.exit(1)
+		output_file = args.video[:-4]+'_video_out_py.avi' #Removes extension and adds _video_out_py.ave
+		video_capture_source = args.video
+	elif(args.image):
+		#Open image file
+		if not os.path.isfile(args.image):
+			print("Input image file ", args.image, " doesn't exist")
+			sys.exit(1)
+		video_capture_source = args.image
+		output_file = args.image[:-4]+'_image_out_py.jpg'
+
+	return video_capture_source, output_file
+
+
+# DEFINES
+CWD_PATH = os.getcwd()
+MODEL_NAME = 'ssdlite_mobilenet_v2_coco_2018_05_09'
+PATH_TO_MODEL = os.path.join(CWD_PATH, 'detection', MODEL_NAME, 'frozen_inference_graph.pb')
+WINDOW_NAME = "People Detector"
+#MAX_QUEUE_SIZE = 128
+
+#Global Variables
+run_threads = True #will be used to kill threads
+
+if __name__ == '__main__':
+
+	video_capture_source, output_file = parse_cmd_line()
+
+	#Designed for multithreading but python 3 doesn't support various cores running D:
+	input_q = Queue(1)
 	output_q = Queue()
+	object_tracker = ObjectTracker()
 
 	Thread(target=thread_worker, args=(input_q, output_q)).start()
 
-	vid_capture = cv.VideoCapture(0)
+	#Viceo_capture_source integer corresponds to webcam, while string corresponds to file path
+	vid_capture = cv.VideoCapture(video_capture_source)
 	width = round(vid_capture.get(cv.CAP_PROP_FRAME_WIDTH))
 	height = round(vid_capture.get(cv.CAP_PROP_FRAME_HEIGHT))
 	codec = cv.VideoWriter_fourcc(*'MJPG')#http://www.fourcc.org/codecs.php
-	vid_writer = cv.VideoWriter(OUTPUT_FILE, codec , 30, (width,height))
 
+	if video_capture_source: #0 = Webcam
+		vid_writer = cv.VideoWriter(output_file, codec , 30, (width,height))
 
 	while cv.waitKey(1) & 0xFF != ord('q') : #If q key is pressed exit window
 
 		has_frame, frame = vid_capture.read()
 
-		if not has_frame:
-			print("Done processing !!!")
-			print("Output file is stored as ", outputFile)
-			cv.waitKey(3000)
-			# Release device
-			vid_capture.release()
+		if has_frame:# If not end frame put into the input queue 
+			input_q.put(frame)
+		elif output_q.empty() & input_q.empty(): #No more frames and finished processing
 			break
 
-		# put data into the input queue 
-		input_q.put(frame)
 
 		if not output_q.empty():
+			data = output_q.get()
 			new_frame = output_q.get()
-			print("frame going to be outputted")
-			vid_writer.write(new_frame.astype(np.uint8))
-			cv.imshow(WINDOW_NAME, new_frame)
+
+			context = {'frame': new_frame, 'class_names': data['class_names'], 'rec_points': data['rect_points'], 
+			'class_colors': data['class_colors'], 'width': width, 'height': height}
+			new_frame = object_tracker(context)
+
+			if video_capture_source: #0 = Webcam
+				vid_writer.write(new_frame.astype(np.uint8))
+			else:
+				cv.imshow(WINDOW_NAME, new_frame)
 
 		
 	run_threads = False
 	vid_capture.release()
-	vid_writer.release()
+	if video_capture_source: #0 = Webcam
+		vid_writer.release()
+		print("Done processing!")
+		print("Output file stored as: ", output_file)
+
 	cv.destroyAllWindows()
 
 
