@@ -11,6 +11,11 @@ from threading import Thread
 from analytics.tracking import ObjectTracker
 from detect_object import detect_objects
 
+
+# Usage example:  python object_detection_app.py --video=run.mp4
+#                 python object_detection_app.py --image=bird.jpg
+
+
 #https://github.com/tensorflow/models/blob/master/research/object_detection/g3doc/detection_model_zoo.md
 
 #Only for python 2
@@ -54,7 +59,7 @@ def thread_output_image(process_q, output_q):
 def parse_cmd_line():
 
 	video_capture_source = 0 #Webcam number
-	output_file = "NULL.avi"
+	output_file = "NULL"
 
 	parser = argparse.ArgumentParser()
 	parser = argparse.ArgumentParser(description='Real Time Object Detection using OPENCV + TF')
@@ -96,6 +101,9 @@ if __name__ == '__main__':
 
 	video_capture_source, output_file = parse_cmd_line()
 
+	is_video = (output_file[-4:] =='.avi')
+	is_image = (output_file[-4:] =='.jpg')
+
 	#Designed for multithreading but python 3 doesn't support various cores running D:
 	input_q = Queue(1)
 	output_q = Queue()
@@ -109,7 +117,7 @@ if __name__ == '__main__':
 	height = round(vid_capture.get(cv.CAP_PROP_FRAME_HEIGHT))
 	codec = cv.VideoWriter_fourcc(*'MJPG')#http://www.fourcc.org/codecs.php
 
-	if video_capture_source: #0 = Webcam
+	if is_video:
 		vid_writer = cv.VideoWriter(output_file, codec , 30, (width,height))
 
 	while cv.waitKey(1) & 0xFF != ord('q') : #If q key is pressed exit window
@@ -118,7 +126,7 @@ if __name__ == '__main__':
 
 		if has_frame:# If not end frame put into the input queue 
 			input_q.put(frame)
-		elif output_q.empty() & input_q.empty(): #No more frames and finished processing
+		elif output_q.empty() and input_q.empty(): #No more frames and finished processing
 			break
 
 
@@ -130,18 +138,22 @@ if __name__ == '__main__':
 			'class_colors': data['class_colors'], 'width': width, 'height': height}
 			new_frame = object_tracker(context)
 
-			if video_capture_source: #0 = Webcam
+			if is_video: #0 = Webcam
 				vid_writer.write(new_frame.astype(np.uint8))
+			elif is_image:
+				cv.imwrite(output_file, new_frame.astype(np.uint8));
 			else:
 				cv.imshow(WINDOW_NAME, new_frame)
 
 		
 	run_threads = False
 	vid_capture.release()
-	if video_capture_source: #0 = Webcam
-		vid_writer.release()
+	
+	if is_video or is_image:
 		print("Done processing!")
 		print("Output file stored as: ", output_file)
+		if is_video: #0 = Webcam
+			vid_writer.release()
 
 	cv.destroyAllWindows()
 
