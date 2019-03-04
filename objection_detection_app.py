@@ -1,14 +1,11 @@
 import cv2 as cv
-import time
 import argparse
 import numpy as np
 import tensorflow as tf
 import os
-
 #Python Libraries
 from queue import Queue #Thread safe
 from threading import Thread
-
 #Local Files
 from tracking import ObjectTracker
 from detect_object import detect_objects
@@ -16,8 +13,9 @@ from detect_object import detect_objects
 
 """
 Usage example: 
-	python object_detection_app.py --video=run.mp4
-	python object_detection_app.py --image=bird.jpg
+	Webcam:	python object_detection_app.py
+	Video:	python object_detection_app.py --video run.mp4
+	Image:	python object_detection_app.py --image bird.jpg
 
 Models:
 	https://github.com/tensorflow/models/blob/master/research/object_detection/g3doc/detection_model_zoo.md
@@ -28,7 +26,18 @@ Optimizing Only for python 2:
 """
 
 
-def thread_worker(input_q, output_q):
+"""
+This thread carries out object detection and loads up the frozen tensorflow model for
+classification.
+Takes the frames from input_queue calculates classification data and pushes
+data and original frame to output_queue
+
+Input:
+	-input_q: Input queue, contains frames
+	-output_q: Output queue, original frame + data will be pushed to this queue
+Return: None
+"""
+def thread_detect_objects(input_q, output_q):
 	# load the frozen tensorflow model into memory
 	detection_graph = tf.Graph()
 	with detection_graph.as_default():
@@ -40,7 +49,7 @@ def thread_worker(input_q, output_q):
 
 		sess = tf.Session(graph=detection_graph)
 
-	while run_threads:
+	while not kill_threads:
 		if not input_q.empty(): #better to block than poll empty, as not running on various cores
 			frame = input_q.get()
 			data = detect_objects(frame, sess, detection_graph)
@@ -53,13 +62,26 @@ def thread_worker(input_q, output_q):
 Tried to optimize with threads but ended up working slower, is it able to run with various cores?
  https://stackoverflow.com/questions/7542957/is-python-capable-of-running-on-multiple-cores
  Base on various answer it's unable to run on various cores 
-"""
 
+If future python version work correctly on multiple cores this will result useful, use one thread to process
+and one to output video file.
+"""
 def thread_process_image(input_q, process_q):
 	return
 def thread_output_image(process_q, output_q):
 	return
 
+"""
+Carries out the parsing of the command line, this will detect if the user wants to process webcam,
+images or videos. Returns video capture source to be used with cv.VideoCapture() and the name of the output file
+
+Input: None
+Return:
+	-video_capture_source: 0 for webcam, and for image or video files just the file name
+	-output_file: Returns output file name, "...out_py.avi" for video, "...out_py.jpg" and "NULL" for webcam a
+	there shouldn't be an output file
+
+"""
 def parse_cmd_line():
 
 	video_capture_source = 0 #Webcam number
@@ -67,7 +89,6 @@ def parse_cmd_line():
 
 	parser = argparse.ArgumentParser()
 	parser = argparse.ArgumentParser(description='Real Time Object Detection using OPENCV + TF')
-	#parser.add_argument('-src', '--source', dest='video_source', help='Path of video source, no input webcam.')
 	parser.add_argument('-img', '--image', help='Path to image file.')
 	parser.add_argument('-vid', '--video', help='Path to video file.')
 	args = parser.parse_args()
@@ -96,10 +117,9 @@ CWD_PATH = os.getcwd()
 MODEL_NAME = 'ssdlite_mobilenet_v2_coco_2018_05_09'
 PATH_TO_MODEL = os.path.join(CWD_PATH, 'detection', MODEL_NAME, 'frozen_inference_graph.pb')
 WINDOW_NAME = "People Detector"
-#MAX_QUEUE_SIZE = 128
 
 #Global Variables
-run_threads = True #will be used to kill threads
+kill_threads = False #will be used to kill threads
 
 if __name__ == '__main__':
 
@@ -107,14 +127,14 @@ if __name__ == '__main__':
 
 	pending_frames = 0 #Will carry out a count of pending 
 	is_video = (output_file[-4:] =='.avi')
-	is_image = (output_file[-4:] =='.jpg')
+	is_image = is_video ^ (output_file[-4:] =='.jpg') #Incase user input -video and -image video will have priority
 
 	#Designed for multithreading but python 3 doesn't support various cores running D:
 	input_q = Queue(1)
 	output_q = Queue()
 	object_tracker = ObjectTracker()
 
-	Thread(target=thread_worker, args=(input_q, output_q)).start()
+	Thread(target=thread_detect_objects, args=(input_q, output_q)).start()
 
 	#Viceo_capture_source integer corresponds to webcam, while string corresponds to file path
 	vid_capture = cv.VideoCapture(video_capture_source)
@@ -122,12 +142,13 @@ if __name__ == '__main__':
 	height = round(vid_capture.get(cv.CAP_PROP_FRAME_HEIGHT))
 	codec = cv.VideoWriter_fourcc(*'MJPG')#http://www.fourcc.org/codecs.php
 
+	#Vid writer is necessary for saving a video file
 	if is_video:
 		vid_writer = cv.VideoWriter(output_file, codec , 30, (width,height))
 
 	while cv.waitKey(1) & 0xFF != ord('q') : #If q key is pressed exit window
 
-		has_frame, frame = vid_capture.read()
+		has_frame, frame = vid_capture.read() #has_frame returns false when reaching end of file
 
 		if has_frame:# If not end frame put into the input queue 
 			input_q.put(frame)
@@ -135,7 +156,7 @@ if __name__ == '__main__':
 		elif pending_frames == 0: #No more pending frames
 			break
 
-		if not output_q.empty():
+		if not output_q.empty(): #Check if empty to avoid blocking
 			data = output_q.get()
 			new_frame = output_q.get()
 
@@ -144,16 +165,16 @@ if __name__ == '__main__':
 			new_frame = object_tracker(context)
 			pending_frames -= 1
 
-			if is_video: #0 = Webcam
+			if is_video: 
 				vid_writer.write(new_frame.astype(np.uint8))
 			elif is_image:
 				print("writing image")
 				cv.imwrite(output_file, new_frame.astype(np.uint8));
-			else:
+			else:#0 = Webcam
 				cv.imshow(WINDOW_NAME, new_frame)
 
 		
-	run_threads = False
+	kill_threads = True
 	vid_capture.release()
 	
 	if is_video or is_image:
