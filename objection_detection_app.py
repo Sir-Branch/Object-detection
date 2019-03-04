@@ -5,23 +5,27 @@ import numpy as np
 import tensorflow as tf
 import os
 
-
+#Python Libraries
 from queue import Queue #Thread safe
 from threading import Thread
-from analytics.tracking import ObjectTracker
+
+#Local Files
+from tracking import ObjectTracker
 from detect_object import detect_objects
 
 
-# Usage example:  python object_detection_app.py --video=run.mp4
-#                 python object_detection_app.py --image=bird.jpg
+"""
+Usage example: 
+	python object_detection_app.py --video=run.mp4
+	python object_detection_app.py --image=bird.jpg
 
+Models:
+	https://github.com/tensorflow/models/blob/master/research/object_detection/g3doc/detection_model_zoo.md
 
-#https://github.com/tensorflow/models/blob/master/research/object_detection/g3doc/detection_model_zoo.md
-
-#Only for python 2
-#https://www.pyimagesearch.com/2015/12/21/increasing-webcam-fps-with-python-and-opencv/
-#https://www.pyimagesearch.com/2017/02/06/faster-video-file-fps-with-cv2-videocapture-and-opencv/
-
+Optimizing Only for python 2:
+	https://www.pyimagesearch.com/2015/12/21/increasing-webcam-fps-with-python-and-opencv/
+	https://www.pyimagesearch.com/2017/02/06/faster-video-file-fps-with-cv2-videocapture-and-opencv/
+"""
 
 
 def thread_worker(input_q, output_q):
@@ -101,6 +105,7 @@ if __name__ == '__main__':
 
 	video_capture_source, output_file = parse_cmd_line()
 
+	pending_frames = 0 #Will carry out a count of pending 
 	is_video = (output_file[-4:] =='.avi')
 	is_image = (output_file[-4:] =='.jpg')
 
@@ -126,9 +131,9 @@ if __name__ == '__main__':
 
 		if has_frame:# If not end frame put into the input queue 
 			input_q.put(frame)
-		elif output_q.empty() and input_q.empty(): #No more frames and finished processing
+			pending_frames += 1
+		elif pending_frames == 0: #No more pending frames
 			break
-
 
 		if not output_q.empty():
 			data = output_q.get()
@@ -137,10 +142,12 @@ if __name__ == '__main__':
 			context = {'frame': new_frame, 'class_names': data['class_names'], 'rec_points': data['rect_points'], 
 			'class_colors': data['class_colors'], 'width': width, 'height': height}
 			new_frame = object_tracker(context)
+			pending_frames -= 1
 
 			if is_video: #0 = Webcam
 				vid_writer.write(new_frame.astype(np.uint8))
 			elif is_image:
+				print("writing image")
 				cv.imwrite(output_file, new_frame.astype(np.uint8));
 			else:
 				cv.imshow(WINDOW_NAME, new_frame)

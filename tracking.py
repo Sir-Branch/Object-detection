@@ -31,7 +31,7 @@ class ObjectTracker(object):
 
 
     def __call__(self, context):
-        self.update_class_counts(context['class_names'])
+        #self.update_class_counts(context['class_names'])
         self.update_person_status(context['class_names'])
         frame = context['frame']
         font = cv2.FONT_HERSHEY_SIMPLEX
@@ -47,13 +47,15 @@ class ObjectTracker(object):
             cv2.putText(frame, name[0], (int(point['xmin'] * context['width']), int(point['ymin'] * context['height'])), font,
                         0.3, (0, 0, 0), 1)
 
-        cv2.rectangle(frame, (0, 0), (frame.shape[1], 50), (0, 0, 0), cv2.FILLED)
-        cv2.putText(frame, ("Room occupied: {occupied}".format(occupied=self.occupancy)), (30, 30),
+
+
+            cv2.putText(frame, ("Person detected: {occupied}".format(occupied=self.occupancy)), (30, 30),
                     font, 0.6, (255, 255, 255), 1)
 
-        if len(list(self.class_counts.keys())) > 0:
-            key_1 = str(list(self.class_counts.keys())[0])
-            cv2.putText(frame, (key_1 + ':' + str(self.class_counts[key_1])), (int(frame.shape[1] * 0.85), 30), font, 0.6, (255, 255, 255), 1)
+        # cv2.rectangle(frame, (0, 0), (frame.shape[1], 50), (0, 0, 0), cv2.FILLED)
+        # if len(list(self.class_counts.keys())) > 0:
+        #     key_1 = str(list(self.class_counts.keys())[0])
+        #     cv2.putText(frame, (key_1 + ':' + str(self.class_counts[key_1])), (int(frame.shape[1] * 0.85), 30), font, 0.6, (255, 255, 255), 1)
 
 
         return frame
