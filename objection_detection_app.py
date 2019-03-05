@@ -6,7 +6,9 @@ import os
 #Python Libraries
 from queue import Queue #Thread safe
 from threading import Thread
+from copy import deepcopy
 #Local Files
+from notifier import notifier 
 from tracking import ObjectTracker
 from detect_object import detect_objects
 
@@ -150,6 +152,7 @@ if __name__ == '__main__':
 	output_q = Queue()
 
 	object_tracker = ObjectTracker()
+	website_html = notifier(15)
 	Thread(target=thread_detect_objects, args=(input_q, output_q)).start()
 
 	#Viceo_capture_source integer corresponds internal cam, while string corresponds to file path or ipcam
@@ -172,13 +175,14 @@ if __name__ == '__main__':
 		elif pending_frames == 0: #No more pending frames
 			break
 
-		if not output_q.empty(): #Check if empty to avoid blocking
+		if not output_q.qsize() >= 2: #Check if empty to avoid blocking
 			data = output_q.get()
 			new_frame = output_q.get()
 
 			context = {'frame': new_frame, 'class_names': data['class_names'], 'rec_points': data['rect_points'], 
 			'class_colors': data['class_colors'], 'width': width, 'height': height}
-			new_frame = object_tracker(context)
+			website_html(deepcopy(context)) #Avoid the frame from being modified
+			new_frame = object_tracker(context) 
 			pending_frames -= 1
 
 			if save_vid: 

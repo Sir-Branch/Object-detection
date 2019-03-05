@@ -4,7 +4,7 @@ from utils import label_map_util
 from utils.webcam import draw_boxes_and_labels
 
 
-MIN_THRESH = 0.3
+MIN_THRESH = 0.4
 NUM_CLASSES = 90
 CWD_PATH = os.getcwd()
 PATH_TO_LABELS = os.path.join(CWD_PATH, 'detection', 'data', 'mscoco_label_map.pbtxt')
