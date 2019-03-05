@@ -4,10 +4,10 @@ from utils import label_map_util
 from utils.webcam import draw_boxes_and_labels
 
 
+MIN_THRESH = 0.3
+NUM_CLASSES = 90
 CWD_PATH = os.getcwd()
 PATH_TO_LABELS = os.path.join(CWD_PATH, 'detection', 'data', 'mscoco_label_map.pbtxt')
-
-NUM_CLASSES = 90
 # label map
 label_map = label_map_util.load_labelmap(PATH_TO_LABELS)
 categories = label_map_util.convert_label_map_to_categories(label_map, max_num_classes=NUM_CLASSES,
@@ -36,7 +36,7 @@ def detect_objects(image_np, sess, detection_graph):
         classes=np.squeeze(classes).astype(np.int32),
         scores=np.squeeze(scores),
         category_index=category_index,
-        min_score_thresh=.5
+        min_score_thresh=MIN_THRESH
     )
 
     return dict(rect_points=rect_points, class_names=class_names, class_colors=class_colors)

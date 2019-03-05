@@ -80,6 +80,8 @@ Return:
 	-video_capture_source: 0 for webcam, and for image or video files just the file name
 	-output_file: Returns output file name, "...out_py.avi" for video, "...out_py.jpg" and "NULL" for webcam a
 	there shouldn't be an output file
+	-save_vid: Returns true if save video option selected, will store video
+	-show_vid: Returns true if show video option selected, will show video in window while processing
 
 """
 def parse_cmd_line():
@@ -87,12 +89,24 @@ def parse_cmd_line():
 	video_capture_source = 0 #Webcam number
 	output_file = "NULL"
 
-	parser = argparse.ArgumentParser()
-	parser = argparse.ArgumentParser(description='Real Time Object Detection using OPENCV + TF')
-	parser.add_argument('-img', '--image', help='Path to image file.')
-	parser.add_argument('-vid', '--video', help='Path to video file.')
+	parser = argparse.ArgumentParser(description ='Real Time Object Detection using OPENCV + TF')
+
+	group_source = parser.add_mutually_exclusive_group()
+	group_source.add_argument('-img', '--image', help='Path to image file.')
+	group_source.add_argument('-vid', '--video', help='Path to video file.')
+	group_source.add_argument('-ip', '--ipcam', help='Ipcam Ip number.')
+	parser.add_argument('-sv', '--save', help='Saves videos to memory.', action="store_true")
+	parser.add_argument('-sh', '--show', help='Shows videos in windows while processing.', action="store_true")
+	#parser.add_argument('-o', '--output', help='Output name.')
+
 	args = parser.parse_args()
 
+	save_vid = args.save
+	show_vid = args.show
+
+	if not save_vid and not show_vid: #Default show video
+		show_vid = True
+		print("No option choosen, will default show video. WILL NOT BE SAVED TO MEM -h for more options")
 
 	if(args.video):
 		# Open the video file
@@ -101,6 +115,9 @@ def parse_cmd_line():
 			sys.exit(1)
 		output_file = args.video[:-4]+'_video_out_py.avi' #Removes extension and adds _video_out_py.ave
 		video_capture_source = args.video
+	elif(args.ipcam):
+		output_file = args.ipcam +'_ipcam_out_py.avi' 
+		video_capture_source = args.ipcam
 	elif(args.image):
 		#Open image file
 		if not os.path.isfile(args.image):
@@ -109,7 +126,7 @@ def parse_cmd_line():
 		video_capture_source = args.image
 		output_file = args.image[:-4]+'_image_out_py.jpg'
 
-	return video_capture_source, output_file
+	return video_capture_source, output_file, save_vid, show_vid
 
 
 # DEFINES
@@ -123,27 +140,26 @@ kill_threads = False #will be used to kill threads
 
 if __name__ == '__main__':
 
-	video_capture_source, output_file = parse_cmd_line()
+	video_capture_source, output_file, save_vid, show_vid = parse_cmd_line()
 
 	pending_frames = 0 #Will carry out a count of pending 
-	is_video = (output_file[-4:] =='.avi')
-	is_image = is_video ^ (output_file[-4:] =='.jpg') #Incase user input -video and -image video will have priority
+	is_image = (output_file[-4:] =='.jpg') #Incase user input -video and -image video will have priority
 
 	#Designed for multithreading but python 3 doesn't support various cores running D:
 	input_q = Queue(1)
 	output_q = Queue()
-	object_tracker = ObjectTracker()
 
+	object_tracker = ObjectTracker()
 	Thread(target=thread_detect_objects, args=(input_q, output_q)).start()
 
-	#Viceo_capture_source integer corresponds to webcam, while string corresponds to file path
+	#Viceo_capture_source integer corresponds internal cam, while string corresponds to file path or ipcam
 	vid_capture = cv.VideoCapture(video_capture_source)
 	width = round(vid_capture.get(cv.CAP_PROP_FRAME_WIDTH))
 	height = round(vid_capture.get(cv.CAP_PROP_FRAME_HEIGHT))
 	codec = cv.VideoWriter_fourcc(*'MJPG')#http://www.fourcc.org/codecs.php
 
 	#Vid writer is necessary for saving a video file
-	if is_video:
+	if save_vid:
 		vid_writer = cv.VideoWriter(output_file, codec , 30, (width,height))
 
 	while cv.waitKey(1) & 0xFF != ord('q') : #If q key is pressed exit window
@@ -165,22 +181,21 @@ if __name__ == '__main__':
 			new_frame = object_tracker(context)
 			pending_frames -= 1
 
-			if is_video: 
+			if save_vid: 
 				vid_writer.write(new_frame.astype(np.uint8))
-			elif is_image:
-				print("writing image")
-				cv.imwrite(output_file, new_frame.astype(np.uint8));
-			else:#0 = Webcam
+			if show_vid:
 				cv.imshow(WINDOW_NAME, new_frame)
+			if is_image:
+				cv.imwrite(output_file, new_frame.astype(np.uint8));
 
 		
 	kill_threads = True
 	vid_capture.release()
 	
-	if is_video or is_image:
+	if save_vid or is_image:
 		print("Done processing!")
 		print("Output file stored as: ", output_file)
-		if is_video: #0 = Webcam
+		if save_vid: #0 = Webcam
 			vid_writer.release()
 
 	cv.destroyAllWindows()
