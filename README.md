@@ -16,26 +16,26 @@ If -sh option is passed will show in a window whatever is being processed(for vi
 
 **Usage examples:** 
 
-    Webcam in a window only:		python object_detection_app.py
-	Webcam in a window only:		python object_detection_app.py -sh
+	Webcam in a window only:	python object_detection_app.py
+	Webcam in a window only:	python object_detection_app.py -sh
 	Webcam in a window and saved:	python object_detection_app.py -sh -sv
-	Webcam saved only:				python object_detection_app.py -sv
+	Webcam saved only:		python object_detection_app.py -sv
 
-    Video in a window only:			python object_detection_app.py --video run.mp4
-    Video in a window only:			python object_detection_app.py --video run.mp4 -sh
-    Video in a window and saved:	python object_detection_app.py --video run.mp4 -sh -sv
-    Video saved only:				python object_detection_app.py --video run.mp4 -sv
-	
-	IPcam in a window only:			python object_detection_app.py --ipcam http://69.193.186.134:81/mjpg/video.mjpg
-    IPcam in a window only:			python object_detection_app.py --ipcam http://69.193.186.134:81/mjpg/video.mjpg -sh
-    IPcam in a window and saved:	python object_detection_app.py --ipcam http://69.193.186.134:81/mjpg/video.mjpg -sh -sv
-    IPcam saved only:				python object_detection_app.py --ipcam http://69.193.186.134:81/mjpg/video.mjpg -sv
+	Video in a window only:		python object_detection_app.py --video run.mp4
+	Video in a window only:		python object_detection_app.py --video run.mp4 -sh
+	Video in a window and saved:	python object_detection_app.py --video run.mp4 -sh -sv
+	Video saved only:		python object_detection_app.py --video run.mp4 -sv
 
-	Image:							python object_detection_app.py --image bird.jpg
+	IPcam in a window only:		python object_detection_app.py --ipcam http://69.193.186.134:81/mjpg/video.mjpg
+	IPcam in a window only:		python object_detection_app.py --ipcam http://69.193.186.134:81/mjpg/video.mjpg -sh
+	IPcam in a window and saved:	python object_detection_app.py --ipcam http://69.193.186.134:81/mjpg/video.mjpg -sh -sv
+	IPcam saved only:		python object_detection_app.py --ipcam http://69.193.186.134:81/mjpg/video.mjpg -sv
+
+	Image:				python object_detection_app.py --image bird.jpg
 	
     
 
-### Available Real Time Models 
+## Available Real Time Models 
 * ssd_mobilenet_v1_coco_11_06_2017
 * ssd_mobilenet_v1_fpn_2018_07_03
 * ssd_mobilenet_v2_coco_2018_03_29
@@ -44,7 +44,7 @@ If -sh option is passed will show in a window whatever is being processed(for vi
 For additional models: https://github.com/tensorflow/models/blob/master/research/object_detection/g3doc/detection_model_zoo.md
 
 For 30fps an image processing time of about 30ms is requiered, this leaves us to choose amongst lower accuracy models for real time object detection. When higher accuary is needed on already stored videos, this can be done via much slower models which provide higher accuracy rates.
-### Credits
+## Credits
 
 Based on: 
 
