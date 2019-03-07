@@ -11,6 +11,8 @@ from copy import deepcopy
 from notifier import notifier 
 from tracking import ObjectTracker
 from detect_object import detect_objects
+from videoContour import video2Contour
+
 
 
 """
@@ -88,6 +90,7 @@ Return:
 """
 def parse_cmd_line():
 
+
 	video_capture_source = 0 #Webcam number
 	output_file = "NULL"
 
@@ -144,6 +147,8 @@ if __name__ == '__main__':
 
 	video_capture_source, output_file, save_vid, show_vid = parse_cmd_line()
 
+	split_view = False #When S key is pressed will split the view in half of processed non processed
+	do_exit = False #Will be used to kill the loop
 	pending_frames = 0 #Will carry out a count of pending 
 	is_image = (output_file[-4:] =='.jpg') #Incase user input -video and -image video will have priority
 
@@ -152,6 +157,7 @@ if __name__ == '__main__':
 	output_q = Queue()
 
 	object_tracker = ObjectTracker()
+	video_contour = video2Contour()
 	website_html = notifier(15)
 	Thread(target=thread_detect_objects, args=(input_q, output_q)).start()
 
@@ -165,7 +171,13 @@ if __name__ == '__main__':
 	if save_vid:
 		vid_writer = cv.VideoWriter(output_file, codec , 30, (width,height))
 
-	while cv.waitKey(1) & 0xFF != ord('q') : #If q key is pressed exit window
+	while not do_exit : #If q key is pressed exit window
+
+		get_key = cv.waitKey(1) & 0xFF
+		if get_key == ord('q') or get_key == 27:    # q or 27==Esc key to stop
+			do_exit = True
+		elif get_key == ord('s'):
+			split_view ^= True
 
 		has_frame, frame = vid_capture.read() #has_frame returns false when reaching end of file
 
@@ -184,7 +196,10 @@ if __name__ == '__main__':
 			website_html(deepcopy(context)) #Avoid the frame from being modified
 			new_frame = object_tracker(context) 
 			pending_frames -= 1
-
+			if split_view:
+				processed_frame = video_contour.apply(deepcopy(new_frame))
+				#Leave half with original frame and half with processed_frame
+				new_frame[:, :int(context['width']//2)] = cv.cvtColor(processed_frame[:, :int(context['width']//2)] ,cv.COLOR_GRAY2BGR)
 			if save_vid: 
 				vid_writer.write(new_frame.astype(np.uint8))
 			if show_vid:
