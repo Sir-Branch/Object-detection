@@ -16,22 +16,22 @@ If -sh option is passed will show in a window whatever is being processed(for vi
 
 **Usage examples:** 
 
-	Webcam in a window only:	python object_detection_app.py
-	Webcam in a window only:	python object_detection_app.py -sh
-	Webcam in a window and saved:	python object_detection_app.py -sh -sv
-	Webcam saved only:		python object_detection_app.py -sv
+	Webcam in a window only:	python objection_detection_app.py
+	Webcam in a window only:	python objection_detection_app.py -sh
+	Webcam in a window and saved:	python objection_detection_app.py -sh -sv
+	Webcam saved only:		python objection_detection_app.py -sv
 
-	Video in a window only:		python object_detection_app.py --video run.mp4
-	Video in a window only:		python object_detection_app.py --video run.mp4 -sh
-	Video in a window and saved:	python object_detection_app.py --video run.mp4 -sh -sv
-	Video saved only:		python object_detection_app.py --video run.mp4 -sv
+	Video in a window only:		python objection_detection_app.py --video run.mp4
+	Video in a window only:		python objection_detection_app.py --video run.mp4 -sh
+	Video in a window and saved:	python objection_detection_app.py --video run.mp4 -sh -sv
+	Video saved only:		python objection_detection_app.py --video run.mp4 -sv
 
-	IPcam in a window only:		python object_detection_app.py --ipcam http://69.193.186.134:81/mjpg/video.mjpg
-	IPcam in a window only:		python object_detection_app.py --ipcam http://69.193.186.134:81/mjpg/video.mjpg -sh
-	IPcam in a window and saved:	python object_detection_app.py --ipcam http://69.193.186.134:81/mjpg/video.mjpg -sh -sv
-	IPcam saved only:		python object_detection_app.py --ipcam http://69.193.186.134:81/mjpg/video.mjpg -sv
+	IPcam in a window only:		python objection_detection_app.py --ipcam http://69.193.186.134:81/mjpg/video.mjpg
+	IPcam in a window only:		python objection_detection_app.py --ipcam http://69.193.186.134:81/mjpg/video.mjpg -sh
+	IPcam in a window and saved:	python objection_detection_app.py --ipcam http://69.193.186.134:81/mjpg/video.mjpg -sh -sv
+	IPcam saved only:		python objection_detection_app.py --ipcam http://69.193.186.134:81/mjpg/video.mjpg -sv
 
-	Image:				python object_detection_app.py --image bird.jpg
+	Image:				python objection_detection_app.py --image bird.jpg
 	
     
 
