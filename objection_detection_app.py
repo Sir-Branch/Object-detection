@@ -8,10 +8,10 @@ from queue import Queue #Thread safe
 from threading import Thread
 from copy import deepcopy
 #Local Files
-from notifier import notifier 
-from tracking import ObjectTracker
-from detect_object import detect_objects
-from videoContour import video2Contour
+from utils.notifier import notifier
+from utils.tracking import ObjectTracker
+from utils.detect_object import detect_objects
+from utils.videoContour import video2Contour
 
 
 
